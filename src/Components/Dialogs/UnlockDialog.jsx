@@ -1,4 +1,3 @@
-// UnlockDialog.jsx
 import React from "react";
 import {
   Dialog,
@@ -27,6 +26,7 @@ const UnlockDialog = ({
     <DialogContent>
       <TextField
         autoFocus
+        autoComplete="off"
         margin="dense"
         label="Password"
         type={showPassword ? "text" : "password"}
@@ -49,7 +49,7 @@ const UnlockDialog = ({
             </InputAdornment>
           ),
         }}
-        onKeyPress={(e) => {
+        onKeyUp={(e) => {
           if (e.key === "Enter") {
             handleUnlock();
           }
