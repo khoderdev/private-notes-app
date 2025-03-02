@@ -23,6 +23,7 @@ export const LockedNoteCard = styled(Card)(({ isDragging }) => ({
   backgroundColor: "#f5f5f5",
   transition: "all 0.2s ease",
   height: "100%",
+  minHeight: "200px", // Ensures all cards have at least this height
   display: "flex",
   flexDirection: "column",
   position: "relative",
@@ -39,6 +40,7 @@ export const UnlockedNoteCard = styled(Card)(({ isDragging }) => ({
   backgroundColor: "#ffffff",
   transition: "all 0.2s ease",
   height: "100%",
+  minHeight: "200px", // Ensures all cards have at least this height
   display: "flex",
   flexDirection: "column",
   position: "relative",
