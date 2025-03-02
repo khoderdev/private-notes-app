@@ -19,8 +19,8 @@ import { NoteContainer, DragHandle, UnlockedNoteCard } from "../../styles/note";
 const UnlockedNote = ({
   note,
   isDragging,
-  setShowActions,
-  showActions,
+  setShowActions = () => {}, 
+  showActions = false, 
   lockNote,
   handleLockAgain,
   handleRemoveLock,
@@ -28,6 +28,25 @@ const UnlockedNote = ({
   deleteNote,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [localShowActions, setLocalShowActions] = useState(showActions);
+
+  const handleMouseEnter = () => {
+    if (setShowActions) {
+      setShowActions(true);
+    } else {
+      setLocalShowActions(true);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (setShowActions) {
+      setShowActions(false);
+    } else {
+      setLocalShowActions(false);
+    }
+  };
+
+  const displayActions = showActions || localShowActions;
 
   return (
     <NoteContainer>
@@ -36,8 +55,8 @@ const UnlockedNote = ({
       </DragHandle>
       <UnlockedNoteCard
         isDragging={isDragging}
-        onMouseEnter={() => setShowActions(true)}
-        onMouseLeave={() => setShowActions(false)}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
       >
         <CardContent sx={{ width: "100%", wordBreak: "break-word", flex: 1 }}>
           {note.title && (
@@ -85,7 +104,7 @@ const UnlockedNote = ({
           ) : (
             <Tooltip title="Lock Note">
               <IconButton
-                sx={{ visibility: showActions ? "visible" : "hidden" }}
+                sx={{ visibility: displayActions ? "visible" : "hidden" }}
                 onClick={lockNote}
               >
                 <LockOutlined fontSize="small" />
@@ -95,7 +114,7 @@ const UnlockedNote = ({
           {note.isLocked && (
             <Tooltip title="Remove Lock">
               <IconButton
-                sx={{ visibility: showActions ? "visible" : "hidden" }}
+                sx={{ visibility: displayActions ? "visible" : "hidden" }}
                 onClick={handleRemoveLock}
               >
                 <LockOutlined fontSize="small" color="disabled" />
@@ -104,7 +123,7 @@ const UnlockedNote = ({
           )}
           <Tooltip title="Archive">
             <IconButton
-              sx={{ visibility: showActions ? "visible" : "hidden" }}
+              sx={{ visibility: displayActions ? "visible" : "hidden" }}
               onClick={() => archiveNote(note)}
             >
               <ArchiveOutlined fontSize="small" />
@@ -112,7 +131,7 @@ const UnlockedNote = ({
           </Tooltip>
           <Tooltip title="Delete">
             <IconButton
-              sx={{ visibility: showActions ? "visible" : "hidden" }}
+              sx={{ visibility: displayActions ? "visible" : "hidden" }}
               onClick={() => deleteNote(note)}
             >
               <DeleteOutlineOutlined fontSize="small" />
