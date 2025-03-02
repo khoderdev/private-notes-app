@@ -1,15 +1,15 @@
 import React from "react";
-import { TextField, IconButton, Tooltip, Paper } from "@mui/material";
+import { TextField, IconButton, Tooltip, Paper, Box } from "@mui/material";
 import { LockOutlined } from "@mui/icons-material";
-import { ActionsContainer } from "../../styles/note";
+import { styled } from "@mui/material/styles";
+import { ActionsContainer } from "../../styles/note.jsx";
 
 const NoteFormContent = ({
   containerRef,
   showTextField,
-  addNote,
+  note,
   onTextChange,
-  handleNoteFieldFocus,
-  handleLockNote
+  handleToggleLock
 }) => {
   return (
     <Paper
@@ -25,7 +25,7 @@ const NoteFormContent = ({
         minHeight: "30px",
         width: "100%",
         transition: "box-shadow 0.3s ease, transform 0.2s ease",
-        backgroundColor: "#fff",
+        backgroundColor: note.color || "#fff",
         "&:hover": {
           boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06)",
           transform: "translateY(-1px)",
@@ -47,8 +47,8 @@ const NoteFormContent = ({
           }}
           style={{ marginBottom: 12 }}
           onChange={(e) => onTextChange(e)}
-          name="title"
-          value={addNote.title}
+          name="heading"
+          value={note.heading}
         />
       )}
       <TextField
@@ -63,10 +63,14 @@ const NoteFormContent = ({
             color: '#5f6368'
           } 
         }}
-        onClick={() => handleNoteFieldFocus(containerRef)}
+        onClick={() => {
+          if (containerRef.current) {
+            containerRef.current.style.minHeight = "70px";
+          }
+        }}
         onChange={(e) => onTextChange(e)}
         name="text"
-        value={addNote.text}
+        value={note.text}
         sx={{
           "& .MuiInputBase-root": {
             padding: "4px 0"
@@ -77,20 +81,20 @@ const NoteFormContent = ({
         <ActionsContainer>
           <Tooltip
             title={
-              addNote.isLocked
+              note.locked
                 ? "Note will be locked"
                 : "Lock note with password"
             }
           >
             <IconButton
-              onClick={handleLockNote}
-              color={addNote.isLocked ? "primary" : "default"}
+              onClick={handleToggleLock}
+              color={note.locked ? "primary" : "default"}
               size="small"
               sx={{
                 transition: "transform 0.2s ease, color 0.2s ease",
                 "&:hover": {
                   transform: "scale(1.1)",
-                  color: addNote.isLocked ? undefined : "#5f6368"
+                  color: note.locked ? undefined : "#5f6368"
                 }
               }}
             >
