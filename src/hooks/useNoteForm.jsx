@@ -1,4 +1,4 @@
-import { useState, useContext, useRef, useEffect } from 'react';
+import { useState, useContext, useRef } from 'react';
 import { v4 as uuid } from 'uuid';
 import { DataContext } from '../Context/DataProvider';
 import { useFirebaseAuth } from './useFirebaseAuth';
@@ -81,19 +81,6 @@ export const useNoteForm = (initialState = {
             locked: !prevState.locked
         }));
     }
-
-    const handleClickOutside = (event) => {
-        if (containerRef.current && !containerRef.current.contains(event.target)) {
-            handleClickAway();
-        }
-    };
-
-    useEffect(() => {
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [note]);
 
     return {
         note,

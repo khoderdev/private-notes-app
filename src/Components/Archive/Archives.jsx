@@ -9,11 +9,11 @@ import { Box, Typography, Container, Grid } from "@mui/material";
 import { ArchiveOutlined } from "@mui/icons-material";
 
 const Archives = () => {
-  const { archivedNotes } = useContext(DataContext);
+  const { archiveNotes } = useContext(DataContext);
 
   return (
     <React.Fragment>
-      {archivedNotes.length === 0 ? (
+      {archiveNotes && archiveNotes.length === 0 ? (
         <Box
           sx={{
             display: "flex",
@@ -42,14 +42,15 @@ const Archives = () => {
         </Box>
       ) : (
         <Container maxWidth="lg">
-          {archivedNotes.map((archiveNote, index) => (
+          {archiveNotes && archiveNotes.map((archiveNote, index) => (
             <Grid
               item
               xs={12}
               sm={6}
               md={4}
               lg={3}
-              key={archiveNote.id || index}
+              key={archiveNote.id}
+              sx={{ mb: 2 }}
             >
               <Archive archiveNote={archiveNote} />
             </Grid>

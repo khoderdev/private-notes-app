@@ -40,22 +40,19 @@ const TrashNote = ({ trashNote }) => {
     setOpenModal(false);
   };
 
-  const { setNotes, deletedNotes, setDeletedNotes } = useContext(DataContext);
+  const { 
+    restoreDeletedNoteHandler, 
+    deleteDeletedNoteHandler, 
+    deletedNotes 
+  } = useContext(DataContext);
 
-  const deleteNote = (trashNote) => {
-    const updatedNotes = deletedNotes.filter(
-      (data) => data.id !== trashNote.id
-    );
-    setDeletedNotes(updatedNotes);
+  const deleteNote = (note) => {
+    deleteDeletedNoteHandler(note);
     handleCloseModal();
   };
 
-  const restoreNote = (trashNote) => {
-    const updatedNotes = deletedNotes.filter(
-      (data) => data.id !== trashNote.id
-    );
-    setDeletedNotes(updatedNotes);
-    setNotes((prevArr) => [...prevArr, trashNote]);
+  const restoreNote = (note) => {
+    restoreDeletedNoteHandler(note);
   };
 
   return (
@@ -68,8 +65,8 @@ const TrashNote = ({ trashNote }) => {
           <Typography>{trashNote.title}</Typography>
           <Typography>{trashNote.text}</Typography>
         </CardContent>
-        <CardActions>
-          <Tooltip title="Delete Forever">
+        <CardActions sx={{ display: "flex", justifyContent: "flex-end" }}>
+          <Tooltip title="Delete forever">
             <IconButton
               sx={{ visibility: showActions ? "visible" : "hidden" }}
               onClick={handleOpenModal}
@@ -87,25 +84,15 @@ const TrashNote = ({ trashNote }) => {
           </Tooltip>
         </CardActions>
       </TrashCard>
-
-      <Dialog
-        open={openModal}
-        onClose={handleCloseModal}
-        sx={{
-          "& .MuiDialog-paper": {
-            width: { xs: "300px", sm: "300px", md: "400px" },
-            maxWidth: { sm: "50%", md: "70%", lg: "90%" },
-          },
-        }}
-      >
-        <DialogTitle sx={{ fontSize: ".875rem", color: "#3c4043" }}>
-          Delete note forever?
-        </DialogTitle>
+      <Dialog open={openModal} onClose={handleCloseModal}>
+        <DialogTitle>Delete note forever?</DialogTitle>
         <DialogActions>
-          <Button variant="dark" onClick={handleCloseModal}>
-            Cancel
-          </Button>
-          <Button onClick={() => deleteNote(trashNote)} autoFocus>
+          <Button onClick={handleCloseModal}>Cancel</Button>
+          <Button
+            onClick={() => deleteNote(trashNote)}
+            color="error"
+            variant="contained"
+          >
             Delete
           </Button>
         </DialogActions>

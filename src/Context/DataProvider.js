@@ -1,15 +1,15 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { v4 as uuid } from 'uuid';
 import { useFirebaseAuth } from '../hooks/useFirebaseAuth';
-import {
-  fetchNotes,
-  fetchArchivedNotes,
-  fetchDeletedNotes,
-  addNote,
-  updateNote,
-  deleteNote,
-  addArchivedNote,
-  deleteArchivedNote,
+import { 
+  fetchNotes, 
+  fetchArchivedNotes, 
+  fetchDeletedNotes, 
+  addNote, 
+  updateNote, 
+  deleteNote as deleteNoteFirebase, 
+  addArchivedNote as archiveNoteFirebase, 
+  deleteArchivedNote as unarchiveNoteFirebase,
   addDeletedNote,
   deleteDeletedNote,
   updateNotesOrder,
@@ -25,14 +25,22 @@ const DataProvider = ({ children }) => {
   const [deletedNotes, setDeletedNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [firebaseError, setFirebaseError] = useState(null);
-  const [firestoreEnabled, setFirestoreEnabled] = useState(true);
+  const [firestoreEnabled, setFirestoreEnabled] = useState(false); // Start with Firestore disabled by default
 
   // Check Firestore access on component mount
   useEffect(() => {
     const checkAccess = async () => {
       if (authEnabled) {
-        const hasAccess = await checkFirestoreAccess();
-        setFirestoreEnabled(hasAccess);
+        try {
+          const hasAccess = await checkFirestoreAccess();
+          console.log("Firestore access check result:", hasAccess);
+          setFirestoreEnabled(hasAccess);
+        } catch (error) {
+          console.error("Error checking Firestore access:", error);
+          setFirestoreEnabled(false);
+        }
+      } else {
+        setFirestoreEnabled(false);
       }
     };
     
@@ -46,48 +54,66 @@ const DataProvider = ({ children }) => {
       const localArchiveNotes = JSON.parse(localStorage.getItem('archiveNotes')) || [];
       const localDeletedNotes = JSON.parse(localStorage.getItem('deletedNotes')) || [];
       
+      console.log("Loading from localStorage:", {
+        notesCount: localNotes.length,
+        archiveNotesCount: localArchiveNotes.length,
+        deletedNotesCount: localDeletedNotes.length
+      });
+      
+      if (localNotes.length > 0) {
+        console.log("Sample note from localStorage:", localNotes[0]);
+      }
+      
       setNotes(localNotes);
       setArchiveNotes(localArchiveNotes);
       setDeletedNotes(localDeletedNotes);
+      setLoading(false);
       
       return { localNotes, localArchiveNotes, localDeletedNotes };
     } catch (error) {
       console.error('Error loading from localStorage:', error);
+      setLoading(false);
       return { localNotes: [], localArchiveNotes: [], localDeletedNotes: [] };
     }
   }, []);
 
   // Save data to localStorage
-  const saveToLocalStorage = useCallback((updatedNotes, updatedArchiveNotes, updatedDeletedNotes) => {
+  const saveToLocalStorage = useCallback((notes, archiveNotes, deletedNotes) => {
     try {
-      localStorage.setItem('notes', JSON.stringify(updatedNotes || notes));
-      localStorage.setItem('archiveNotes', JSON.stringify(updatedArchiveNotes || archiveNotes));
-      localStorage.setItem('deletedNotes', JSON.stringify(updatedDeletedNotes || deletedNotes));
+      localStorage.setItem('notes', JSON.stringify(notes));
+      localStorage.setItem('archiveNotes', JSON.stringify(archiveNotes));
+      localStorage.setItem('deletedNotes', JSON.stringify(deletedNotes));
     } catch (error) {
       console.error('Error saving to localStorage:', error);
     }
-  }, [notes, archiveNotes, deletedNotes]);
+  }, []);
 
   // Load data from Firebase
   const loadFromFirebase = useCallback(async () => {
     if (!user || !authEnabled || !firestoreEnabled) {
+      console.log("Skipping Firebase load - not enabled or no user");
       return false;
     }
-
-    setLoading(true);
+    
     try {
-      const firebaseNotes = await fetchNotes(user.uid);
-      const firebaseArchiveNotes = await fetchArchivedNotes(user.uid);
-      const firebaseDeletedNotes = await fetchDeletedNotes(user.uid);
+      setLoading(true);
       
+      // Fetch all data from Firebase
+      const [firebaseNotes, firebaseArchiveNotes, firebaseDeletedNotes] = await Promise.all([
+        fetchNotes(user.uid),
+        fetchArchivedNotes(user.uid),
+        fetchDeletedNotes(user.uid)
+      ]);
+      
+      // Update state with Firebase data
       setNotes(firebaseNotes);
       setArchiveNotes(firebaseArchiveNotes);
       setDeletedNotes(firebaseDeletedNotes);
       
-      // Update localStorage with Firebase data
+      // Also update localStorage with Firebase data
       saveToLocalStorage(firebaseNotes, firebaseArchiveNotes, firebaseDeletedNotes);
       
-      setFirebaseError(null);
+      setLoading(false);
       return true;
     } catch (error) {
       console.error('Error loading from Firebase:', error);
@@ -98,56 +124,42 @@ const DataProvider = ({ children }) => {
         setFirestoreEnabled(false);
       }
       
+      // Fall back to localStorage
+      loadFromLocalStorage();
       return false;
-    } finally {
-      setLoading(false);
     }
-  }, [user, authEnabled, firestoreEnabled, saveToLocalStorage]);
+  }, [user, authEnabled, firestoreEnabled, loadFromLocalStorage, saveToLocalStorage]);
 
-  // Initial data loading
+  // Initialize data on component mount
   useEffect(() => {
     const initializeData = async () => {
-      setLoading(true);
-      
-      // First load from localStorage
-      const { localNotes, localArchiveNotes, localDeletedNotes } = loadFromLocalStorage();
-      
-      // Set initial data from localStorage
-      setNotes(localNotes);
-      setArchiveNotes(localArchiveNotes);
-      setDeletedNotes(localDeletedNotes);
+      // Always load from localStorage first for immediate data display
+      const localData = loadFromLocalStorage();
       
       // Then try to load from Firebase if available
       if (user && authEnabled && firestoreEnabled) {
         try {
           await loadFromFirebase();
         } catch (error) {
-          console.error('Error in initial Firebase load:', error);
-          setFirebaseError(error.message);
-          
-          // If we get a permissions error, disable Firestore
-          if (error.code === 'permission-denied' || error.code === 'missing-or-insufficient-permissions') {
-            setFirestoreEnabled(false);
-          }
+          console.error('Error loading from Firebase:', error);
+          // We already have data from localStorage, so just log the error
         }
       }
-      
-      setLoading(false);
     };
     
     initializeData();
   }, [user, authEnabled, firestoreEnabled, loadFromLocalStorage, loadFromFirebase]);
 
   // Add a new note
-  const addNoteHandler = async (title, text, isLocked = false, password = null) => {
+  const addNoteHandler = async (heading, text, locked = false, password = '') => {
     const newNote = {
       id: uuid(),
-      title,
+      heading,
       text,
-      isLocked,
+      locked,
       password,
-      date: new Date().toLocaleString().toString(),
-      timestamp: new Date()
+      date: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     };
     
     // Update local state
@@ -157,9 +169,23 @@ const DataProvider = ({ children }) => {
     // Save to localStorage
     saveToLocalStorage(updatedNotes, archiveNotes, deletedNotes);
     
-    // Save to Firebase if available
-    if (user && authEnabled && firestoreEnabled) {
+    // Update in Firebase if available
+    if (user && authEnabled) {
       try {
+        // If Firestore is not enabled, try to check access again
+        if (!firestoreEnabled) {
+          console.log("Firestore not enabled, retrying access check...");
+          const hasAccess = await checkFirestoreAccess();
+          console.log("Firestore access check result:", hasAccess);
+          setFirestoreEnabled(hasAccess);
+          
+          if (!hasAccess) {
+            console.log("Still no Firestore access, skipping Firebase save");
+            return;
+          }
+        }
+        
+        console.log("Attempting to save note to Firebase:", newNote);
         await addNote(newNote, user.uid);
       } catch (error) {
         console.error('Error adding note to Firebase:', error);
@@ -170,6 +196,12 @@ const DataProvider = ({ children }) => {
           setFirestoreEnabled(false);
         }
       }
+    } else {
+      console.log("Skipping Firebase save - not enabled or no user", { 
+        user: !!user, 
+        authEnabled, 
+        firestoreEnabled 
+      });
     }
   };
 
@@ -177,8 +209,9 @@ const DataProvider = ({ children }) => {
   const updateNoteHandler = async (updatedNote) => {
     // Update local state
     const updatedNotes = notes.map(note => 
-      note.id === updatedNote.id ? { ...updatedNote, timestamp: new Date() } : note
+      note.id === updatedNote.id ? { ...updatedNote, timestamp: new Date().toISOString() } : note
     );
+    
     setNotes(updatedNotes);
     
     // Save to localStorage
@@ -187,7 +220,7 @@ const DataProvider = ({ children }) => {
     // Update in Firebase if available
     if (user && authEnabled && firestoreEnabled) {
       try {
-        await updateNote(updatedNote.id, { ...updatedNote, timestamp: new Date() });
+        await updateNote(updatedNote.id, updatedNote);
       } catch (error) {
         console.error('Error updating note in Firebase:', error);
         setFirebaseError(error.message);
@@ -204,7 +237,7 @@ const DataProvider = ({ children }) => {
   const deleteNoteHandler = async (note) => {
     // Update local state
     const updatedNotes = notes.filter(item => item.id !== note.id);
-    const updatedDeletedNotes = [{ ...note, timestamp: new Date() }, ...deletedNotes];
+    const updatedDeletedNotes = [{ ...note, timestamp: new Date().toISOString() }, ...deletedNotes];
     
     setNotes(updatedNotes);
     setDeletedNotes(updatedDeletedNotes);
@@ -215,7 +248,7 @@ const DataProvider = ({ children }) => {
     // Update in Firebase if available
     if (user && authEnabled && firestoreEnabled) {
       try {
-        await deleteNote(note.id);
+        await deleteNoteFirebase(note.id);
         await addDeletedNote(note, user.uid);
       } catch (error) {
         console.error('Error deleting note in Firebase:', error);
@@ -233,7 +266,7 @@ const DataProvider = ({ children }) => {
   const archiveNoteHandler = async (note) => {
     // Update local state
     const updatedNotes = notes.filter(item => item.id !== note.id);
-    const updatedArchiveNotes = [{ ...note, timestamp: new Date() }, ...archiveNotes];
+    const updatedArchiveNotes = [{ ...note, timestamp: new Date().toISOString() }, ...archiveNotes];
     
     setNotes(updatedNotes);
     setArchiveNotes(updatedArchiveNotes);
@@ -244,8 +277,8 @@ const DataProvider = ({ children }) => {
     // Update in Firebase if available
     if (user && authEnabled && firestoreEnabled) {
       try {
-        await deleteNote(note.id);
-        await addArchivedNote(note, user.uid);
+        await deleteNoteFirebase(note.id);
+        await archiveNoteFirebase(note, user.uid);
       } catch (error) {
         console.error('Error archiving note in Firebase:', error);
         setFirebaseError(error.message);
@@ -262,7 +295,7 @@ const DataProvider = ({ children }) => {
   const restoreArchiveNoteHandler = async (note) => {
     // Update local state
     const updatedArchiveNotes = archiveNotes.filter(item => item.id !== note.id);
-    const updatedNotes = [{ ...note, timestamp: new Date() }, ...notes];
+    const updatedNotes = [{ ...note, timestamp: new Date().toISOString() }, ...notes];
     
     setArchiveNotes(updatedArchiveNotes);
     setNotes(updatedNotes);
@@ -273,7 +306,7 @@ const DataProvider = ({ children }) => {
     // Update in Firebase if available
     if (user && authEnabled && firestoreEnabled) {
       try {
-        await deleteArchivedNote(note.id);
+        await unarchiveNoteFirebase(note.id);
         await addNote(note, user.uid);
       } catch (error) {
         console.error('Error restoring note from archive in Firebase:', error);
@@ -287,11 +320,11 @@ const DataProvider = ({ children }) => {
     }
   };
 
-  // Delete a note from archive
+  // Delete a note from archive (move to trash)
   const deleteArchiveNoteHandler = async (note) => {
     // Update local state
     const updatedArchiveNotes = archiveNotes.filter(item => item.id !== note.id);
-    const updatedDeletedNotes = [{ ...note, timestamp: new Date() }, ...deletedNotes];
+    const updatedDeletedNotes = [{ ...note, timestamp: new Date().toISOString() }, ...deletedNotes];
     
     setArchiveNotes(updatedArchiveNotes);
     setDeletedNotes(updatedDeletedNotes);
@@ -302,7 +335,7 @@ const DataProvider = ({ children }) => {
     // Update in Firebase if available
     if (user && authEnabled && firestoreEnabled) {
       try {
-        await deleteArchivedNote(note.id);
+        await unarchiveNoteFirebase(note.id);
         await addDeletedNote(note, user.uid);
       } catch (error) {
         console.error('Error deleting note from archive in Firebase:', error);
@@ -320,7 +353,7 @@ const DataProvider = ({ children }) => {
   const restoreDeletedNoteHandler = async (note) => {
     // Update local state
     const updatedDeletedNotes = deletedNotes.filter(item => item.id !== note.id);
-    const updatedNotes = [{ ...note, timestamp: new Date() }, ...notes];
+    const updatedNotes = [{ ...note, timestamp: new Date().toISOString() }, ...notes];
     
     setDeletedNotes(updatedDeletedNotes);
     setNotes(updatedNotes);
@@ -360,6 +393,36 @@ const DataProvider = ({ children }) => {
         await deleteDeletedNote(note.id);
       } catch (error) {
         console.error('Error permanently deleting note in Firebase:', error);
+        setFirebaseError(error.message);
+        
+        // If we get a permissions error, disable Firestore
+        if (error.code === 'permission-denied' || error.code === 'missing-or-insufficient-permissions') {
+          setFirestoreEnabled(false);
+        }
+      }
+    }
+  };
+
+  // Empty trash (delete all notes in trash)
+  const emptyTrashHandler = async (notesToKeep = []) => {
+    // If notesToKeep is provided, use it; otherwise, empty the trash completely
+    const updatedDeletedNotes = notesToKeep.length > 0 ? notesToKeep : [];
+    setDeletedNotes(updatedDeletedNotes);
+    
+    // Save to localStorage
+    saveToLocalStorage(notes, archiveNotes, updatedDeletedNotes);
+    
+    // Update in Firebase if available
+    if (user && authEnabled && firestoreEnabled && deletedNotes.length > 0) {
+      try {
+        // Delete each note individually
+        const deletePromises = deletedNotes
+          .filter(note => !notesToKeep.some(keep => keep.id === note.id))
+          .map(note => deleteDeletedNote(note.id));
+        
+        await Promise.all(deletePromises);
+      } catch (error) {
+        console.error('Error emptying trash in Firebase:', error);
         setFirebaseError(error.message);
         
         // If we get a permissions error, disable Firestore
@@ -426,6 +489,7 @@ const DataProvider = ({ children }) => {
       deleteArchiveNoteHandler,
       restoreDeletedNoteHandler,
       deleteDeletedNoteHandler,
+      emptyTrashHandler,
       updateNotesOrderHandler,
       loading,
       firebaseError,

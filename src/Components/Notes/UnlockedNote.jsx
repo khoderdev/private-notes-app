@@ -18,7 +18,7 @@ import { NoteContainer, DragHandle, UnlockedNoteCard } from "../../styles/note";
 
 const UnlockedNote = ({
   note,
-  isDragging,
+  isdragging,
   setShowActions = () => {}, 
   showActions = false, 
   lockNote,
@@ -54,7 +54,7 @@ const UnlockedNote = ({
         <DragIndicator fontSize="small" />
       </DragHandle>
       <UnlockedNoteCard
-        isDragging={isDragging}
+        isdragging={isdragging}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
@@ -76,7 +76,7 @@ const UnlockedNote = ({
           >
             {note.text}
           </Typography>
-          {note.text.length > 100 && !isExpanded && (
+          {note.text && note.text.length > 100 && !isExpanded && (
             <Button onClick={() => setIsExpanded(true)} sx={{ mt: 1 }}>
               Read more
             </Button>

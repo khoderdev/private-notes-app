@@ -26,6 +26,7 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
+  "homepage": "https://private-notes-2025.web.app",
   "eslintConfig": {
     "extends": [
       "react-app",

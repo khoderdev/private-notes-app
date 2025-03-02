@@ -18,7 +18,7 @@ import {
 import { DeleteOutlineOutlined } from "@mui/icons-material";
 
 const TrashNotes = () => {
-  const { deletedNotes, setDeletedNotes } = useContext(DataContext);
+  const { deletedNotes, emptyTrashHandler } = useContext(DataContext);
 
   const [openModal, setOpenModal] = useState(false);
 
@@ -30,8 +30,8 @@ const TrashNotes = () => {
     setOpenModal(false);
   };
 
-  const deleteNote = () => {
-    setDeletedNotes([]);
+  const emptyTrash = () => {
+    emptyTrashHandler();
     handleCloseModal();
   };
 
@@ -41,7 +41,10 @@ const TrashNotes = () => {
       const filteredNotes = deletedNotes.filter(
         (note) => now - note.createdAt <= 7 * 24 * 60 * 60 * 1000
       );
-      setDeletedNotes(filteredNotes);
+      if (filteredNotes.length !== deletedNotes.length) {
+        // Only update if there's a change
+        emptyTrashHandler(filteredNotes);
+      }
     }, 24 * 60 * 60 * 1000);
 
     return () => clearInterval(interval);
@@ -50,70 +53,54 @@ const TrashNotes = () => {
 
   return (
     <React.Fragment>
-      {deletedNotes.length === 0 ? (
-        <React.Fragment>
-          <Box>
-            <Typography
-              align="center"
-              variant="subtitle1"
-              sx={{ fontStyle: "italic" }}
-            >
-              Notes in Trash are deleted after 7 days.
-            </Typography>
-          </Box>
-
-          <Box
+      {deletedNotes && deletedNotes.length === 0 ? (
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            marginTop: "8rem",
+          }}
+        >
+          <DeleteOutlineOutlined
             sx={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              marginTop: "8rem",
+              backgroundSize: "120px 120px",
+              height: "120px",
+              margin: "20px",
+              opacity: ".1",
+              width: "120px",
             }}
+          />
+          <Typography
+            sx={{ fontSize: "1.375rem" }}
+            align="center"
+            variant="h6"
+            color="#5f6368"
           >
-            <DeleteOutlineOutlined
-              sx={{
-                backgroundSize: "120px 120px",
-                height: "120px",
-                margin: "20px",
-                opacity: ".1",
-                width: "120px",
-              }}
-            />
-            <Typography
-              sx={{ fontSize: "1.375rem" }}
-              align="center"
-              variant="h6"
-              color="#5f6368"
-            >
-              No notes in Trash
-            </Typography>
-          </Box>
-        </React.Fragment>
+            No notes in Trash
+          </Typography>
+        </Box>
       ) : (
         <Container maxWidth="lg">
           <Box
             sx={{
               display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              margin: "auto",
-              gap: "1rem",
-              mb: 3,
+              justifyContent: "flex-end",
+              marginTop: "10px",
+              marginBottom: "10px",
             }}
           >
-            <Typography variant="subtitle1" sx={{ fontStyle: "italic" }}>
-              Notes in Trash are deleted after 7 days.
-            </Typography>
             <Button
-              sx={{ textTransform: "capitalize" }}
+              variant="text"
+              color="error"
               onClick={handleOpenModal}
+              sx={{ textTransform: "none" }}
             >
               Empty Trash
             </Button>
           </Box>
-
-          <Grid spacing={2} container>
-            {deletedNotes.map((trashNote) => (
+          <Grid container spacing={2}>
+            {deletedNotes && deletedNotes.map((trashNote) => (
               <Grid item xs={12} sm={6} md={4} lg={3} key={trashNote.id}>
                 <TrashNote trashNote={trashNote} />
               </Grid>
@@ -121,25 +108,15 @@ const TrashNotes = () => {
           </Grid>
         </Container>
       )}
-
-      <Dialog
-        open={openModal}
-        onClose={handleCloseModal}
-        sx={{
-          "& .MuiDialog-paper": {
-            width: { xs: "300px", sm: "300px", md: "400px" },
-            maxWidth: { sm: "50%", md: "70%", lg: "90%" },
-          },
-        }}
-      >
-        <DialogTitle sx={{ fontSize: ".875rem", color: "#3c4043" }}>
-          Empty trash? All notes in Trash will be permanently deleted.
-        </DialogTitle>
+      <Dialog open={openModal} onClose={handleCloseModal}>
+        <DialogTitle>Empty trash?</DialogTitle>
         <DialogActions>
-          <Button variant="dark" onClick={handleCloseModal}>
-            Cancel
-          </Button>
-          <Button onClick={deleteNote} autoFocus>
+          <Button onClick={handleCloseModal}>Cancel</Button>
+          <Button
+            onClick={emptyTrash}
+            color="error"
+            variant="contained"
+          >
             Empty Trash
           </Button>
         </DialogActions>

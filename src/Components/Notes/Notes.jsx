@@ -37,7 +37,7 @@ const LoadingContainer = styled(Box)(({ theme }) => ({
 }));
 
 const Notes = () => {
-  const { notes, setNotes, isLoading, updateOrder } = useContext(DataContext);
+  const { notes, setNotes, loading, updateNotesOrderHandler } = useContext(DataContext);
   const [draggedNoteId, setDraggedNoteId] = useState(null);
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
@@ -68,10 +68,10 @@ const Notes = () => {
     updatedNotes.splice(destinationIndex, 0, removed);
 
     setNotes(updatedNotes);
-    updateOrder(updatedNotes);
+    updateNotesOrderHandler(updatedNotes);
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
       <MainContent>
         <DrawerHeader />

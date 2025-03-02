@@ -1,41 +1,91 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Test access collection for checking permissions
-    match /test_access/{document=**} {
-      allow read: if request.auth != null;
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.uid == "mqezh9S4dbeNPgz4EEmjgf5ohfk1" || 
+        request.auth.token.email == "khoder.dev@gmail.com"
+      );
+    }
+    
+    function isValidNote() {
+      let noteData = request.resource.data;
+      
+      // Make validation more flexible - only require userId and timestamp
+      return noteData.size() >= 2
+        && noteData.userId is string
+        && noteData.timestamp is string;
+    }
+    
+    // Grant admin full access to all collections
+    match /{document=**} {
+      allow read, write: if isAdmin();
     }
     
     // Notes collection
     match /notes/{noteId} {
-      allow read: if request.auth != null && (resource == null || request.auth.uid == resource.data.userId);
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-      allow update: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid
+      );
+      
+      allow create: if isSignedIn() && (
+        request.resource.data.userId == request.auth.uid
+      ) && isValidNote();
+      
+      allow update: if isSignedIn() && (
+        resource.data.userId == request.auth.uid
+      ) && isValidNote();
+      
+      allow delete: if isSignedIn() && (
+        resource.data.userId == request.auth.uid
+      );
     }
     
     // Archived notes collection
     match /archivedNotes/{noteId} {
-      allow read: if request.auth != null && (resource == null || request.auth.uid == resource.data.userId);
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-      allow update: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid
+      );
+      
+      allow create: if isSignedIn() && (
+        request.resource.data.userId == request.auth.uid
+      ) && isValidNote();
+      
+      allow update: if isSignedIn() && (
+        resource.data.userId == request.auth.uid
+      ) && isValidNote();
+      
+      allow delete: if isSignedIn() && (
+        resource.data.userId == request.auth.uid
+      );
     }
     
     // Deleted notes collection
     match /deletedNotes/{noteId} {
-      allow read: if request.auth != null && (resource == null || request.auth.uid == resource.data.userId);
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-      allow update: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
-    }
-    
-    // Locked notes collection
-    match /lockedNotes/{noteId} {
-      allow read: if request.auth != null && (resource == null || request.auth.uid == resource.data.userId);
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
-      allow update: if request.auth != null && request.auth.uid == resource.data.userId;
-      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid
+      );
+      
+      allow create: if isSignedIn() && (
+        request.resource.data.userId == request.auth.uid
+      ) && isValidNote();
+      
+      allow update: if isSignedIn() && (
+        resource.data.userId == request.auth.uid
+      ) && isValidNote();
+      
+      allow delete: if isSignedIn() && (
+        resource.data.userId == request.auth.uid
+      );
     }
   }
 }
