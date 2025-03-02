@@ -15,6 +15,10 @@ const DataProvider = ({ children }) => {
     const storedDeletedNotes = localStorage.getItem("deletedNotes");
     return storedDeletedNotes ? JSON.parse(storedDeletedNotes) : [];
   });
+  const [lockedNotes, setLockedNotes] = useState(() => {
+    const storedLockedNotes = localStorage.getItem("lockedNotes");
+    return storedLockedNotes ? JSON.parse(storedLockedNotes) : [];
+  });
 
   useEffect(() => {
     localStorage.setItem("notes", JSON.stringify(notes));
@@ -28,6 +32,10 @@ const DataProvider = ({ children }) => {
     localStorage.setItem("deletedNotes", JSON.stringify(deletedNotes));
   }, [deletedNotes]);
 
+  useEffect(() => {
+    localStorage.setItem("lockedNotes", JSON.stringify(lockedNotes));
+  }, [lockedNotes]);
+
   return (
     <DataContext.Provider
       value={{
@@ -37,6 +45,8 @@ const DataProvider = ({ children }) => {
         setArchivedNotes,
         deletedNotes,
         setDeletedNotes,
+        lockedNotes,
+        setLockedNotes,
       }}
     >
       {children}

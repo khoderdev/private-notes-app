@@ -21,11 +21,17 @@ const DraggableNoteItem = ({ note, index, draggedNoteId }) => (
         {...provided.draggableProps}
         {...provided.dragHandleProps}
         sx={{
-          transition: "transform 0.2s ease",
-          transform: snapshot.isDragging ? "scale(1.02)" : "scale(1)",
+          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          transform: snapshot.isDragging 
+            ? "scale(1.03)" 
+            : "scale(1)",
           zIndex: snapshot.isDragging ? 100 : 1,
           height: "auto",
           display: "flex",
+          padding: "8px",
+          "&:hover": {
+            transform: "translateY(-3px)",
+          },
         }}
       >
         <Note
