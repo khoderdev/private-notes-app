@@ -3,46 +3,66 @@ import { DataContext } from '../Context/DataProvider';
 
 export const useNoteHandlers = (note) => {
     const { 
-        archiveNote, 
-        deleteNote, 
-        updateNoteData 
+        archiveNoteHandler, 
+        deleteNoteHandler, 
+        updateNoteHandler 
     } = useContext(DataContext);
     
-    const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+    // Dialog states
+    const [showLockDialog, setShowLockDialog] = useState(false);
+    const [showUnlockDialog, setShowUnlockDialog] = useState(false);
+    const [showActions, setShowActions] = useState(false);
+    const [isUnlocked, setIsUnlocked] = useState(false);
+    
+    // Password states
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [unlockPassword, setUnlockPassword] = useState('');
     const [passwordError, setPasswordError] = useState('');
     const [showPassword, setShowPassword] = useState(false);
 
-    const handleArchiveNote = () => {
-        archiveNote(note);
+    const archiveNote = () => {
+        archiveNoteHandler(note);
     };
 
-    const handleDeleteNote = () => {
-        deleteNote(note);
+    const deleteNote = () => {
+        deleteNoteHandler(note);
     };
 
-    const handleUpdateNote = (updatedNote) => {
-        updateNoteData(updatedNote);
+    const updateNote = (updatedNote) => {
+        updateNoteHandler(updatedNote);
     };
 
     const handleColorChange = (color) => {
         const updatedNote = { ...note, color };
-        updateNoteData(updatedNote);
+        updateNoteHandler(updatedNote);
     };
 
     const handleTogglePin = () => {
         const updatedNote = { ...note, pinned: !note.pinned };
-        updateNoteData(updatedNote);
+        updateNoteHandler(updatedNote);
     };
 
-    const handleToggleLock = () => {
-        if (note.locked) {
-            // If already locked, show password dialog to unlock
-            setShowPasswordDialog(true);
-        } else {
-            // If not locked, show password dialog to set password
-            setShowPasswordDialog(true);
-        }
+    // Lock functionality
+    const lockNote = () => {
+        setShowLockDialog(true);
+    };
+
+    const unlockNote = () => {
+        setShowUnlockDialog(true);
+    };
+
+    const handleCloseLockDialog = () => {
+        setShowLockDialog(false);
+        setPassword('');
+        setConfirmPassword('');
+        setPasswordError('');
+    };
+
+    const handleCloseUnlockDialog = () => {
+        setShowUnlockDialog(false);
+        setUnlockPassword('');
+        setPasswordError('');
     };
 
     const handlePasswordChange = (e) => {
@@ -50,55 +70,100 @@ export const useNoteHandlers = (note) => {
         setPasswordError('');
     };
 
+    const handleConfirmPasswordChange = (e) => {
+        setConfirmPassword(e.target.value);
+        setPasswordError('');
+    };
+
+    const handleUnlockPasswordChange = (e) => {
+        setUnlockPassword(e.target.value);
+        setPasswordError('');
+    };
+
     const handleTogglePasswordVisibility = () => {
         setShowPassword(!showPassword);
     };
 
-    const handlePasswordSubmit = () => {
-        if (note.locked) {
-            // Verify password to unlock
-            if (password === note.password) {
-                const updatedNote = { ...note, locked: false, password: '' };
-                updateNoteData(updatedNote);
-                setShowPasswordDialog(false);
-                setPassword('');
-            } else {
-                setPasswordError('Incorrect password');
-            }
+    const handleLock = () => {
+        // Validate password
+        if (password.length < 4) {
+            setPasswordError('Password must be at least 4 characters');
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            setPasswordError('Passwords do not match');
+            return;
+        }
+        
+        // Update note with password
+        const updatedNote = { 
+            ...note, 
+            isLocked: true, 
+            password: password,
+            timestamp: new Date().toISOString()
+        };
+        updateNoteHandler(updatedNote);
+        
+        // Close dialog and reset state
+        setShowLockDialog(false);
+        setPassword('');
+        setConfirmPassword('');
+    };
+
+    const handleUnlock = () => {
+        // Verify password
+        if (unlockPassword === note.password) {
+            setIsUnlocked(true);
+            setShowUnlockDialog(false);
+            setUnlockPassword('');
         } else {
-            // Set password and lock note
-            if (password.length < 4) {
-                setPasswordError('Password must be at least 4 characters');
-                return;
-            }
-            
-            const updatedNote = { ...note, locked: true, password };
-            updateNoteData(updatedNote);
-            setShowPasswordDialog(false);
-            setPassword('');
+            setPasswordError('Incorrect password');
         }
     };
 
-    const handleClosePasswordDialog = () => {
-        setShowPasswordDialog(false);
-        setPassword('');
-        setPasswordError('');
+    const handleRemoveLock = () => {
+        // Remove lock from note
+        const updatedNote = { 
+            ...note, 
+            isLocked: false, 
+            password: '',
+            timestamp: new Date().toISOString()
+        };
+        updateNoteHandler(updatedNote);
+        setIsUnlocked(false);
+    };
+
+    const handleLockAgain = () => {
+        setIsUnlocked(false);
     };
 
     return {
-        handleArchiveNote,
-        handleDeleteNote,
-        handleUpdateNote,
-        handleColorChange,
-        handleTogglePin,
-        handleToggleLock,
-        showPasswordDialog,
+        showActions,
+        setShowActions,
+        showLockDialog,
+        showUnlockDialog,
         password,
-        passwordError,
+        confirmPassword,
+        unlockPassword,
         showPassword,
+        passwordError,
+        isUnlocked,
+        archiveNote,
+        deleteNote,
+        lockNote,
+        unlockNote,
+        handleCloseLockDialog,
+        handleCloseUnlockDialog,
         handlePasswordChange,
+        handleConfirmPasswordChange,
+        handleUnlockPasswordChange,
         handleTogglePasswordVisibility,
-        handlePasswordSubmit,
-        handleClosePasswordDialog
+        handleLock,
+        handleUnlock,
+        handleRemoveLock,
+        handleLockAgain,
+        handleColorChange,
+        handleTogglePin
     };
 };

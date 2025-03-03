@@ -7,13 +7,13 @@ import {
 } from "@mui/icons-material";
 import { NoteContainer, DragHandle, LockedNoteCard } from "../../styles/note";
 
-const LockedNote = ({ note, isDragging, setShowActions, unlockNote }) => (
+const LockedNote = ({ isdragging, setShowActions, unlockNote }) => (
   <NoteContainer>
     <DragHandle className="drag-handle">
       <DragIndicator fontSize="small" />
     </DragHandle>
     <LockedNoteCard
-      isDragging={isDragging}
+      isdragging={isdragging}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
     >

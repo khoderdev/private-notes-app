@@ -1,0 +1,30 @@
+{
+  "users": [
+    {
+      "localId": "1",
+      "email": "khoder.dev@gmail.com",
+      "emailVerified": true,
+      "passwordHash": "UkVEQUNURUQ=",
+      "salt": "REDACTED",
+      "displayName": "Khoder (admin)",
+      "photoUrl": "",
+      "createdAt": "1583851404000",
+      "lastSignedInAt": "1583851404000",
+      "providerUserInfo": [
+        {
+          "providerId": "google.com",
+          "email": "khoder.dev@gmail.com",
+          "displayName": "Khoder (admin)",
+          "photoUrl": ""
+        }
+      ]
+    }
+  ],
+  "hash": {
+    "algorithm": "SCRYPT",
+    "base64_signer_key": "REDACTED",
+    "base64_salt_separator": "REDACTED",
+    "rounds": 8,
+    "mem_cost": 14
+  }
+}

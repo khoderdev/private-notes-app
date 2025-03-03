@@ -1,7 +1,7 @@
 {
-  "short_name": "Google Keep Clone",
-  "name": "Google Keep Clone",
-  "description": "A Google Keep Clone made with React and MUI",
+  "short_name": "Private Notes App",
+  "name": "Private Notes App",
+  "description": "A Private Notes App made with React and MUI",
   "icons": [
     {
       "src": "logo16.png",

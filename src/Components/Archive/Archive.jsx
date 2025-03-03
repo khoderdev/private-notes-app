@@ -23,23 +23,18 @@ const ArchiveCard = styled(Card)`
 const Archive = ({ archiveNote }) => {
   const [showActions, setShowActions] = useState(false);
 
-  const { setNotes, archivedNotes, setArchivedNotes, setDeletedNotes } =
-    useContext(DataContext);
+  const { 
+    restoreArchiveNoteHandler, 
+    deleteArchiveNoteHandler,
+    archiveNotes 
+  } = useContext(DataContext);
 
-  const unarchiveNote = (archiveNote) => {
-    const updatedNotes = archivedNotes.filter(
-      (data) => data.id !== archiveNote.id
-    );
-    setArchivedNotes(updatedNotes);
-    setNotes((prevArr) => [...prevArr, archiveNote]);
+  const unarchiveNote = (note) => {
+    restoreArchiveNoteHandler(note);
   };
 
-  const deleteNote = (archiveNote) => {
-    const updatedNotes = archivedNotes.filter(
-      (data) => data.id !== archiveNote.id
-    );
-    setArchivedNotes(updatedNotes);
-    setDeletedNotes((prevArr) => [...prevArr, archiveNote]);
+  const deleteNote = (note) => {
+    deleteArchiveNoteHandler(note);
   };
 
   return (
@@ -48,12 +43,10 @@ const Archive = ({ archiveNote }) => {
       onMouseLeave={() => setShowActions(false)}
     >
       <CardContent sx={{ wordWrap: "break-word" }}>
-        <Typography>{archiveNote.title}</Typography>
+        <Typography>{archiveNote.heading}</Typography>
         <Typography>{archiveNote.text}</Typography>
       </CardContent>
-      <CardActions
-        sx={{ display: "flex", justifyContent: "end", marginLeft: "auto" }}
-      >
+      <CardActions sx={{ display: "flex", justifyContent: "flex-end" }}>
         <Tooltip title="Unarchive">
           <IconButton
             sx={{ visibility: showActions ? "visible" : "hidden" }}

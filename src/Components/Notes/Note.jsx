@@ -4,7 +4,7 @@ import UnlockedNote from "./UnlockedNote";
 import LockDialog from "../Dialogs/LockDialog";
 import UnlockDialog from "../Dialogs/UnlockDialog";
 
-const Note = ({ note, isDragging }) => {
+const Note = ({ note, isdragging }) => {
   const {
     showActions,
     setShowActions,
@@ -37,7 +37,7 @@ const Note = ({ note, isDragging }) => {
       <>
         <LockedNote
           note={note}
-          isDragging={isDragging}
+          isdragging={isdragging}
           setShowActions={setShowActions}
           unlockNote={unlockNote}
         />
@@ -59,7 +59,7 @@ const Note = ({ note, isDragging }) => {
     <>
       <UnlockedNote
         note={note}
-        isDragging={isDragging}
+        isdragging={isdragging}
         setShowActions={setShowActions}
         showActions={showActions}
         lockNote={lockNote}
@@ -69,7 +69,7 @@ const Note = ({ note, isDragging }) => {
         deleteNote={deleteNote}
       />
       <LockDialog
-        showLockDialog={showLockDialog}
+        showLockDialog={showLockDialog || false}
         handleCloseLockDialog={handleCloseLockDialog}
         password={password}
         confirmPassword={confirmPassword}
