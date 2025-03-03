@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { signInAnonymousUser, onAuthStateChange, checkFirestoreAccess } from '../services/firebase';
+import { signInAnonymouslyUser, onAuthStateChange, checkFirestoreAccess } from '../services/firebase';
 
 export const useFirebaseAuth = () => {
   const [user, setUser] = useState(null);
@@ -7,6 +7,7 @@ export const useFirebaseAuth = () => {
   const [error, setError] = useState(null);
   const [authEnabled, setAuthEnabled] = useState(true);
   const [authAttempts, setAuthAttempts] = useState(0);
+  const [authInProgress, setAuthInProgress] = useState(false);
   const MAX_AUTH_ATTEMPTS = 3;
 
   // Create a local user as fallback if Firebase auth fails
@@ -48,6 +49,11 @@ export const useFirebaseAuth = () => {
       return null;
     }
     
+    if (authInProgress) {
+      console.log("Authentication already in progress, skipping duplicate request");
+      return null;
+    }
+    
     if (attempt > MAX_AUTH_ATTEMPTS) {
       console.error(`Failed to sign in after ${MAX_AUTH_ATTEMPTS} attempts, falling back to local user`);
       setAuthEnabled(false);
@@ -56,10 +62,11 @@ export const useFirebaseAuth = () => {
     }
     
     try {
+      setAuthInProgress(true);
       console.log(`Attempting anonymous sign-in (attempt ${attempt}/${MAX_AUTH_ATTEMPTS})`);
       setAuthAttempts(attempt);
       
-      const firebaseUser = await signInAnonymousUser();
+      const firebaseUser = await signInAnonymouslyUser();
       if (firebaseUser) {
         console.log("Sign-in successful:", firebaseUser.uid);
         setUser(firebaseUser);
@@ -85,12 +92,15 @@ export const useFirebaseAuth = () => {
         createLocalUser();
         return null;
       }
+    } finally {
+      setAuthInProgress(false);
     }
-  }, [authEnabled, createLocalUser]);
+  }, [authEnabled, createLocalUser, authInProgress]);
 
   // Initialize authentication
   useEffect(() => {
     let unsubscribe = () => {};
+    let authInitialized = false;
 
     const initializeAuth = async () => {
       try {
@@ -107,34 +117,44 @@ export const useFirebaseAuth = () => {
           });
           setAuthEnabled(false);
           setLoading(false);
+          authInitialized = true;
           return;
         }
         
-        // Try to sign in
-        const initialUser = await signInAnonymously();
+        // Listen for auth state changes first
+        unsubscribe = onAuthStateChange((firebaseUser) => {
+          if (firebaseUser) {
+            console.log("Auth state changed: User is signed in", firebaseUser.uid);
+            setUser(firebaseUser);
+            setLoading(false);
+            authInitialized = true;
+            
+            // Check Firestore access
+            checkFirestoreAccess().then(hasAccess => {
+              console.log("Firestore access check result:", hasAccess);
+            });
+          } else if (!authInitialized) {
+            console.log("Auth state changed: No user, and not initialized yet");
+            // Only try to sign in if we haven't successfully initialized auth yet
+            signInAnonymously();
+          } else {
+            console.log("Auth state changed: No user, but already initialized");
+            setUser(null);
+            setLoading(false);
+          }
+        });
         
-        if (initialUser) {
-          // Check if we can access Firestore with this user
-          const hasFirestoreAccess = await checkFirestoreAccess();
-          console.log("Firestore access check result:", hasFirestoreAccess);
-          
-          // Listen for auth state changes
-          unsubscribe = onAuthStateChange((firebaseUser) => {
-            if (firebaseUser) {
-              console.log("Auth state changed: User is signed in", firebaseUser.uid);
-              setUser(firebaseUser);
-            } else {
-              console.log("Auth state changed: No user");
-              // Try to sign in again if no user is found
-              signInAnonymously();
-            }
-          });
-        }
+        // Wait a short time for auth state to be established
+        setTimeout(() => {
+          if (!authInitialized) {
+            console.log("No auth state detected after timeout, trying anonymous sign-in");
+            signInAnonymously();
+          }
+        }, 2000);
       } catch (err) {
         console.error("Error during auth initialization:", err);
         setError(err);
         createLocalUser();
-      } finally {
         setLoading(false);
       }
     };
@@ -156,22 +176,24 @@ export const useFirebaseAuth = () => {
     
     try {
       const newUser = await signInAnonymously();
+      setLoading(false);
       return !!newUser;
     } catch (err) {
       console.error("Error during authentication retry:", err);
       setError(err);
-      return false;
-    } finally {
       setLoading(false);
+      return false;
     }
   }, [signInAnonymously]);
 
-  return { 
-    user, 
-    loading, 
-    error, 
-    authEnabled, 
+  return {
+    user,
+    loading,
+    error,
+    authEnabled,
     authAttempts,
-    retryAuthentication
+    signInAnonymously,
+    retryAuthentication,
+    createLocalUser
   };
 };

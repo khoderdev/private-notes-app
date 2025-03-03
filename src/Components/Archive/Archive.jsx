@@ -43,7 +43,7 @@ const Archive = ({ archiveNote }) => {
       onMouseLeave={() => setShowActions(false)}
     >
       <CardContent sx={{ wordWrap: "break-word" }}>
-        <Typography>{archiveNote.title}</Typography>
+        <Typography>{archiveNote.heading}</Typography>
         <Typography>{archiveNote.text}</Typography>
       </CardContent>
       <CardActions sx={{ display: "flex", justifyContent: "flex-end" }}>

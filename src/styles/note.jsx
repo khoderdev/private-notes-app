@@ -122,3 +122,27 @@ export const ActionsContainer = styled(Box)(() => ({
     opacity: 1,
   },
 }));
+
+export const LoadingContainer = styled(Box)(({ theme }) => ({
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  width: "100%",
+  height: "100vh",
+  flexDirection: "column",
+  gap: 2,
+}));
+
+export const StatusIndicator = styled(Box)(({ theme }) => ({
+  display: "flex",
+  alignItems: "center",
+  padding: "4px 12px",
+  borderRadius: "16px",
+  fontSize: "0.875rem",
+  marginLeft: "auto",
+  marginRight: "16px",
+  cursor: "pointer",
+  "&:hover": {
+    backgroundColor: "rgba(0, 0, 0, 0.04)",
+  },
+}));

@@ -62,7 +62,7 @@ const TrashNote = ({ trashNote }) => {
         onMouseLeave={() => setShowActions(false)}
       >
         <CardContent sx={{ wordWrap: "break-word" }}>
-          <Typography>{trashNote.title}</Typography>
+          <Typography>{trashNote.heading}</Typography>
           <Typography>{trashNote.text}</Typography>
         </CardContent>
         <CardActions sx={{ display: "flex", justifyContent: "flex-end" }}>

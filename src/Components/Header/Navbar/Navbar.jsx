@@ -9,6 +9,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import logo from "../../../assets/Images/google-keep-logo.png";
 
 import { useLocation } from "react-router-dom";
+import AuthButton from "../../Auth/AuthButton";
 
 const Navbar = styled(AppBar)`
   z-index: ${(props) => props.theme.zIndex.drawer + 1};
@@ -37,8 +38,10 @@ const Header = ({ handleDrawer, open }) => {
         </IconButton>
         <Box sx={{ display: "flex", alignItems: "center" }}>
           {pathName ? "" : <img src={logo} alt="logo" style={{ width: 30 }} />}
-          <Heading>{pathName || "Keep"}</Heading>
+          <Heading>{pathName || "Private Notes"}</Heading>
         </Box>
+        <Box sx={{ flexGrow: 1 }} />
+        <AuthButton />
       </Toolbar>
     </Navbar>
   );

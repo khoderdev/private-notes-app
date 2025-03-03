@@ -59,9 +59,9 @@ const UnlockedNote = ({
         onMouseLeave={handleMouseLeave}
       >
         <CardContent sx={{ width: "100%", wordBreak: "break-word", flex: 1 }}>
-          {note.title && (
+          {note.heading && (
             <Typography variant="h6" component="h2" gutterBottom>
-              {note.title}
+              {note.heading}
             </Typography>
           )}
           <Typography

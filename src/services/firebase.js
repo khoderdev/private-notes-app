@@ -18,8 +18,10 @@ import {
 import { 
   getAuth, 
   signInWithEmailAndPassword,
-  signInAnonymously,
+  createUserWithEmailAndPassword,
   onAuthStateChanged,
+  signInWithPopup,
+  GoogleAuthProvider,
   connectAuthEmulator
 } from 'firebase/auth';
 
@@ -34,16 +36,102 @@ const firebaseConfig = {
   measurementId: "G-1KHVE11MN5"
 };
 
-// Admin user credentials - in a real app, these would be securely stored
-const ADMIN_EMAIL = "khoder.dev@gmail.com";
-const ADMIN_PASSWORD = "admin123";
-
 // Initialize Firebase
 let app;
 let db;
 let auth;
 let firestoreEnabled = true;
 let initializationAttempted = false;
+
+// Quota management constants
+const QUOTA_EXCEEDED_KEY = 'firebase_quota_exceeded';
+const QUOTA_RESET_TIME_KEY = 'firebase_quota_reset_time';
+const QUOTA_ATTEMPTS_KEY = 'firebase_auth_attempts';
+const DEFAULT_QUOTA_RESET_HOURS = 24; // Default reset time in hours
+
+// Check if quota is exceeded
+export const isQuotaExceeded = () => {
+  const quotaExceeded = localStorage.getItem(QUOTA_EXCEEDED_KEY);
+  return quotaExceeded === 'true';
+};
+
+// Set quota exceeded flag with reset time
+export const setQuotaExceeded = () => {
+  localStorage.setItem(QUOTA_EXCEEDED_KEY, 'true');
+  
+  // Set reset time to 24 hours from now
+  const resetTime = new Date();
+  resetTime.setHours(resetTime.getHours() + DEFAULT_QUOTA_RESET_HOURS);
+  localStorage.setItem(QUOTA_RESET_TIME_KEY, resetTime.toISOString());
+  
+  console.warn(`Firebase quota exceeded. Will reset at ${resetTime.toLocaleString()}`);
+};
+
+// Clear quota exceeded flag
+export const clearQuotaExceeded = () => {
+  localStorage.removeItem(QUOTA_EXCEEDED_KEY);
+  localStorage.removeItem(QUOTA_RESET_TIME_KEY);
+  localStorage.setItem(QUOTA_ATTEMPTS_KEY, '0');
+  console.log('Cleared Firebase quota exceeded flag');
+};
+
+// Check if quota reset time has passed
+export const checkQuotaResetTime = () => {
+  const resetTimeStr = localStorage.getItem(QUOTA_RESET_TIME_KEY);
+  if (!resetTimeStr) return true;
+  
+  const resetTime = new Date(resetTimeStr);
+  const now = new Date();
+  
+  if (now >= resetTime) {
+    clearQuotaExceeded();
+    return true;
+  }
+  
+  return false;
+};
+
+// Increment auth attempts counter
+export const incrementAuthAttempts = () => {
+  const attempts = parseInt(localStorage.getItem(QUOTA_ATTEMPTS_KEY) || '0', 10);
+  localStorage.setItem(QUOTA_ATTEMPTS_KEY, (attempts + 1).toString());
+  return attempts + 1;
+};
+
+// Get remaining time until quota reset
+export const getQuotaResetTimeRemaining = () => {
+  const resetTimeStr = localStorage.getItem(QUOTA_RESET_TIME_KEY);
+  if (!resetTimeStr) return null;
+  
+  const resetTime = new Date(resetTimeStr);
+  const now = new Date();
+  
+  if (now >= resetTime) {
+    clearQuotaExceeded();
+    return null;
+  }
+  
+  const diffMs = resetTime - now;
+  const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+  
+  return { hours: diffHrs, minutes: diffMins, milliseconds: diffMs };
+};
+
+// Enhanced error handling for Firebase auth
+export const handleAuthError = (error) => {
+  console.error('Firebase auth error:', error.code, error.message);
+  
+  if (error.code === 'auth/quota-exceeded') {
+    console.warn('Setting quota exceeded flag due to auth/quota-exceeded error');
+    setQuotaExceeded();
+  }
+  
+  // Track auth attempts for potential quota issues
+  incrementAuthAttempts();
+  
+  return error;
+};
 
 // Initialize Firebase with retry mechanism
 const initializeFirebase = async (retryCount = 0, maxRetries = 3) => {
@@ -125,13 +213,6 @@ export const checkFirestoreAccess = async () => {
     // Reset firestoreEnabled to true before checking
     firestoreEnabled = true;
     
-    // Check if this is the admin user
-    if (userId === "mqezh9S4dbeNPgz4EEmjgf5ohfk1" || 
-        (currentUser.email && currentUser.email === "khoder.dev@gmail.com")) {
-      console.log("Admin user detected, assuming Firestore access");
-      return true;
-    }
-    
     // Try to access the notes collection
     try {
       const notesRef = collection(db, 'notes');
@@ -182,43 +263,99 @@ export const checkFirestoreAccess = async () => {
 };
 
 // Authentication functions
-export const signInAnonymousUser = async () => {
-  // If Firebase hasn't been initialized yet, try to initialize it
-  if (!initializationAttempted) {
-    const result = await initializeFirebase();
-    if (!result.success) {
-      return null;
-    }
-  }
-  
-  if (!auth) {
-    console.error("Firebase auth not initialized");
-    return null;
-  }
-
+export const signInWithEmailAndPasswordUser = async (email, password) => {
   try {
-    // Try to sign in with admin credentials first
-    try {
-      console.log("Attempting to sign in with admin credentials");
-      const userCredential = await signInWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASSWORD);
-      console.log("Admin user signed in:", userCredential.user.uid);
-      return userCredential.user;
-    } catch (adminError) {
-      // Check if this is an ADMIN_ONLY_OPERATION error
-      if (adminError.message && adminError.message.includes("ADMIN_ONLY_OPERATION")) {
-        console.log("Admin sign-in not available in this environment, falling back to anonymous auth");
-      } else {
-        console.error("Admin sign-in failed, falling back to anonymous:", adminError);
-      }
-      
-      // Fall back to anonymous auth if admin sign-in fails
-      const userCredential = await signInAnonymously(auth);
-      console.log("Anonymous user signed in:", userCredential.user.uid);
-      return userCredential.user;
+    // Check if quota is already exceeded
+    if (isQuotaExceeded() && !checkQuotaResetTime()) {
+      const error = {
+        code: 'auth/quota-exceeded',
+        message: 'Authentication quota exceeded. Please try again later.'
+      };
+      throw error;
     }
+    
+    // Check if Firebase is initialized
+    if (!auth) {
+      console.error("Firebase auth not initialized");
+      throw new Error("Firebase authentication is not available");
+    }
+    
+    // Attempt to sign in
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    
+    // Verify we have a valid user
+    if (!userCredential || !userCredential.user) {
+      throw new Error("Authentication failed: No user returned");
+    }
+    
+    console.log("Email sign-in successful in firebase.js:", userCredential.user.uid);
+    return userCredential;
   } catch (error) {
-    console.error("All authentication methods failed:", error);
-    return null;
+    console.error("Error in signInWithEmailAndPasswordUser:", error);
+    throw handleAuthError(error);
+  }
+};
+
+export const createUserWithEmailAndPasswordUser = async (email, password) => {
+  try {
+    // Check if quota is already exceeded
+    if (isQuotaExceeded() && !checkQuotaResetTime()) {
+      throw {
+        code: 'auth/quota-exceeded',
+        message: 'Authentication quota exceeded. Please try again later.'
+      };
+    }
+    
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    
+    // Verify we have a valid user
+    if (!userCredential || !userCredential.user) {
+      throw new Error("Authentication failed: No user returned");
+    }
+    
+    console.log("Email sign-up successful in firebase.js:", userCredential.user.uid);
+    return userCredential;
+  } catch (error) {
+    console.error("Error in createUserWithEmailAndPasswordUser:", error);
+    
+    // Track quota exceeded errors
+    if (error.code === 'auth/quota-exceeded') {
+      setQuotaExceeded();
+    }
+    
+    throw handleAuthError(error);
+  }
+};
+
+export const signInWithGoogleUser = async () => {
+  try {
+    // Check if quota is already exceeded
+    if (isQuotaExceeded() && !checkQuotaResetTime()) {
+      throw {
+        code: 'auth/quota-exceeded',
+        message: 'Authentication quota exceeded. Please try again later.'
+      };
+    }
+    
+    const provider = new GoogleAuthProvider();
+    const userCredential = await signInWithPopup(auth, provider);
+    
+    // Verify we have a valid user
+    if (!userCredential || !userCredential.user) {
+      throw new Error("Authentication failed: No user returned from Google sign-in");
+    }
+    
+    console.log("Google sign-in successful in firebase.js:", userCredential.user.uid);
+    return userCredential;
+  } catch (error) {
+    console.error("Error in signInWithGoogleUser:", error);
+    
+    // Track quota exceeded errors
+    if (error.code === 'auth/quota-exceeded') {
+      setQuotaExceeded();
+    }
+    
+    throw handleAuthError(error);
   }
 };
 
@@ -390,13 +527,13 @@ export const addNote = async (note, userId) => {
   try {
     console.log(`Adding note for user ${userId}:`, note.id);
     
-    // Ensure the note has the required fields
+    // Ensure the note has the required fields and consistent naming
     const noteWithMetadata = {
       ...note,
       userId,
       timestamp: getTimestamp(),
-      // Add title and text fields if they don't exist
-      title: note.heading || note.title || "",
+      // Store heading as heading (keep original field name for consistency)
+      heading: note.heading || "",
       text: note.text || ""
     };
     
@@ -587,5 +724,15 @@ export const updateNotesOrder = async (notes, userId) => {
   } catch (error) {
     handleFirestoreError(error, 'updateNotesOrder');
     throw error;
+  }
+};
+
+export const signOutUser = async () => {
+  try {
+    await auth.signOut();
+    return true;
+  } catch (error) {
+    console.error('Sign out error:', error);
+    return false;
   }
 };
