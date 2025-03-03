@@ -19,8 +19,8 @@ import { NoteContainer, DragHandle, UnlockedNoteCard } from "../../styles/note";
 const UnlockedNote = ({
   note,
   isdragging,
-  setShowActions = () => {}, 
-  showActions = false, 
+  setShowActions = () => {},
+  showActions = false,
   lockNote,
   handleLockAgain,
   handleRemoveLock,
@@ -65,7 +65,7 @@ const UnlockedNote = ({
             </Typography>
           )}
           <Typography
-            variant="body1"
+            variant="body2"
             sx={{
               overflow: "hidden",
               textOverflow: "ellipsis",

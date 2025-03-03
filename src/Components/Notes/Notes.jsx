@@ -1,10 +1,8 @@
 import { useContext, useState } from "react";
 import {
-  Box,
   styled,
   useTheme,
   useMediaQuery,
-  Container,
   CircularProgress,
 } from "@mui/material";
 import { DragDropContext } from "@hello-pangea/dnd";
@@ -12,32 +10,19 @@ import { DataContext } from "../../Context/DataProvider";
 import { EmptyNotes } from "./EmptyNotes";
 import DroppableNotesGrid from "./DroppableNotesGrid";
 import Form from "./Form";
+import {
+  LoadingContainer,
+  MainContent,
+  NotesContainer,
+} from "../../styles/note";
 
 const DrawerHeader = styled("div")(({ theme }) => ({
   ...theme.mixins.toolbar,
 }));
 
-const MainContent = styled(Box)(({ theme }) => ({
-  display: "flex",
-  flexDirection: "column",
-  width: "100%",
-  padding: theme.spacing(3),
-}));
-
-const NotesContainer = styled(Container)(({ theme }) => ({
-  marginTop: theme.spacing(2),
-  padding: 0,
-}));
-
-const LoadingContainer = styled(Box)(({ theme }) => ({
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  height: "80vh",
-}));
-
 const Notes = () => {
-  const { notes, setNotes, loading, updateNotesOrderHandler } = useContext(DataContext);
+  const { notes, setNotes, loading, updateNotesOrderHandler } =
+    useContext(DataContext);
   const [draggedNoteId, setDraggedNoteId] = useState(null);
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
