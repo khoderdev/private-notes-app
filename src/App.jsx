@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from "react";
+import { useEffect, useState, useContext } from "react";
 import "./App.css";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Box, Snackbar, Alert, IconButton } from "@mui/material";
@@ -9,6 +9,7 @@ import Header from "./Components/Header/Sidebar/Sidebar";
 import Notes from "./Components/Notes/Notes";
 import Archive from "./Components/Archive/Archives";
 import Trash from "./Components/Trash/TrashNotes";
+import AuthForm from "./Components/Auth/AuthForm";
 import { DataContext } from "./Context/DataProvider";
 import LoadingIndicator from "../src/utils/LoadingIndicator";
 import SyncStatusIndicator from "../src/utils/SyncStatusIndicator";
@@ -19,17 +20,15 @@ const DrawerHeader = styled("div")(({ theme }) => ({
 }));
 
 function App() {
-  const { 
-    firebaseError, 
-    setFirebaseError, 
-    firestoreEnabled, 
-    setFirestoreEnabled, 
+  const {
+    firebaseError,
+    firestoreEnabled,
     retryFirebaseConnection,
     user,
     authEnabled,
-    loading: dataLoading
+    loading: dataLoading,
   } = useContext(DataContext);
-  
+
   const [appReady, setAppReady] = useState(false);
   const [syncStatus, setSyncStatus] = useState("offline");
   const [showSnackbar, setShowSnackbar] = useState(false);
@@ -86,6 +85,10 @@ function App() {
     return <LoadingIndicator />;
   }
 
+  if (!user) {
+    return <AuthForm />;
+  }
+
   return (
     <Box style={{ display: "flex", width: "100%" }}>
       <Router
@@ -120,7 +123,7 @@ function App() {
             quotaResetTime={quotaResetTime}
           />
 
-          <Box sx={{ p: 3, width: "100%" }}>
+          <Box sx={{ width: "100%", flex: 1, overflow: "auto" }}>
             <DrawerHeader />
             <Routes>
               <Route path="/" element={<Notes />} />

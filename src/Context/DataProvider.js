@@ -36,13 +36,9 @@ const DataProvider = ({ children }) => {
           // console.log("Firestore access check result:", hasAccess);
           setFirestoreEnabled(hasAccess);
 
-          // If we don't have access, log the reason
-          if (!hasAccess) {
-            // console.log("Firestore access denied - using local storage only");
-            setFirebaseError(
-              "Firestore access denied. Using local storage only."
-            );
-          } else {
+          // Only clear error if access is restored
+          // Don't set error on initial check - let actual operations determine if there's a real issue
+          if (hasAccess) {
             setFirebaseError(null);
           }
         } catch (error) {
@@ -107,13 +103,17 @@ const DataProvider = ({ children }) => {
 
   // Load data from Firebase
   const loadFromFirebase = useCallback(async () => {
+    console.log("[loadFromFirebase] Starting Firebase load");
+    console.log("[loadFromFirebase] user:", !!user, "authEnabled:", authEnabled, "firestoreEnabled:", firestoreEnabled);
+    
     if (!user || !authEnabled || !firestoreEnabled) {
-      // console.log("Skipping Firebase load - not enabled or no user");
+      console.log("[loadFromFirebase] Skipping Firebase load - not enabled or no user");
       return false;
     }
 
     try {
       setLoading(true);
+      console.log("[loadFromFirebase] Fetching notes from Firebase for user:", user.uid);
 
       // Fetch all data from Firebase
       const [firebaseNotes, firebaseArchiveNotes, firebaseDeletedNotes] =
@@ -123,22 +123,33 @@ const DataProvider = ({ children }) => {
           fetchDeletedNotes(user.uid),
         ]);
 
-      // Update state with Firebase data
-      setNotes(firebaseNotes);
-      setArchiveNotes(firebaseArchiveNotes);
-      setDeletedNotes(firebaseDeletedNotes);
+      console.log("[loadFromFirebase] Fetch complete - Notes:", firebaseNotes.length, "Archived:", firebaseArchiveNotes.length, "Deleted:", firebaseDeletedNotes.length);
 
-      // Also update localStorage with Firebase data
-      saveToLocalStorage(
-        firebaseNotes,
-        firebaseArchiveNotes,
-        firebaseDeletedNotes
-      );
+      // Only update state if Firebase returned data
+      // If Firebase returns empty arrays, keep the localStorage data
+      if (firebaseNotes.length > 0 || firebaseArchiveNotes.length > 0 || firebaseDeletedNotes.length > 0) {
+        console.log("[loadFromFirebase] Firebase has data, updating state");
+        // Update state with Firebase data
+        setNotes(firebaseNotes);
+        setArchiveNotes(firebaseArchiveNotes);
+        setDeletedNotes(firebaseDeletedNotes);
+
+        // Also update localStorage with Firebase data
+        saveToLocalStorage(
+          firebaseNotes,
+          firebaseArchiveNotes,
+          firebaseDeletedNotes
+        );
+      } else {
+        console.log("[loadFromFirebase] Firebase returned empty data, keeping localStorage data");
+      }
 
       setLoading(false);
+      console.log("[loadFromFirebase] Firebase load completed successfully");
       return true;
     } catch (error) {
-      // console.error("Error loading from Firebase:", error);
+      console.error("[loadFromFirebase] Error loading from Firebase:", error);
+      console.error("[loadFromFirebase] Error code:", error.code, "Message:", error.message);
       setFirebaseError(error.message);
 
       // If we get a permissions error, disable Firestore
@@ -146,6 +157,7 @@ const DataProvider = ({ children }) => {
         error.code === "permission-denied" ||
         error.code === "missing-or-insufficient-permissions"
       ) {
+        console.log("[loadFromFirebase] Permission error detected, disabling Firestore");
         setFirestoreEnabled(false);
 
         // Don't overwrite existing data with empty data from Firebase
@@ -153,6 +165,7 @@ const DataProvider = ({ children }) => {
         setLoading(false);
       } else {
         // For other errors, fall back to localStorage
+        console.log("[loadFromFirebase] Non-permission error, falling back to localStorage");
         loadFromLocalStorage();
       }
 
@@ -169,27 +182,44 @@ const DataProvider = ({ children }) => {
   // Initialize data on component mount
   useEffect(() => {
     const initializeData = async () => {
+      console.log("[DataProvider] Initializing data on component mount");
+      // First, always load from localStorage on mount
+      loadFromLocalStorage();
+      console.log("[DataProvider] Loaded data from localStorage");
+      
+      // If no user, just mark loading as done (auth form will be shown)
+      if (!user) {
+        console.log("[DataProvider] No user signed in, skipping Firebase load");
+        return;
+      }
+      
+      console.log("[DataProvider] User signed in:", user.uid, "authEnabled:", authEnabled, "firestoreEnabled:", firestoreEnabled);
+      
       // Then try to load from Firebase if available and not already known to be disabled
       if (user && authEnabled && firestoreEnabled) {
         try {
           // Check Firestore access first before attempting to load data
+          console.log("[DataProvider] Checking Firestore access");
           const hasAccess = await checkFirestoreAccess();
+          console.log("[DataProvider] Firestore access check result:", hasAccess);
 
           if (hasAccess) {
+            console.log("[DataProvider] Firestore access confirmed, loading data");
             await loadFromFirebase();
           } else {
-            // If we don't have access, just set the error message and keep using localStorage data
+            // If we don't have access, just disable Firestore and keep using localStorage data
+            // Don't set error message here - let actual operations determine if there's a real issue
+            console.log("[DataProvider] Firestore access denied, disabling Firestore");
             setFirestoreEnabled(false);
-            setFirebaseError(
-              "Firestore access denied. Using local storage only."
-            );
             // console.log(
             //   "Firestore access denied during initialization - using local storage only"
             // );
           }
         } catch (error) {
-          // console.error("Error loading from Firebase:", error);
+          console.error("[DataProvider] Error during initialization:", error);
         }
+      } else {
+        console.log("[DataProvider] Skipping Firebase load - user:", !!user, "authEnabled:", authEnabled, "firestoreEnabled:", firestoreEnabled);
       }
     };
 
@@ -204,6 +234,8 @@ const DataProvider = ({ children }) => {
 
   // Add a note
   const addNoteHandler = async (heading, text, password = "") => {
+    console.log("[addNoteHandler] Creating new note");
+    console.log("[addNoteHandler] User:", user?.uid, "firestoreEnabled:", firestoreEnabled);
     try {
       // Create the new note object
       const newNote = {
@@ -216,27 +248,32 @@ const DataProvider = ({ children }) => {
         userId: user ? user.uid : "local-user",
       };
 
+      console.log("[addNoteHandler] New note created:", newNote.id);
+
       // Always save to localStorage first
       const updatedNotes = [newNote, ...notes];
       setNotes(updatedNotes);
       saveToLocalStorage(updatedNotes, archiveNotes, deletedNotes);
+      console.log("[addNoteHandler] Note saved to localStorage");
 
       // Try to save to Firebase if enabled
       if (user && firestoreEnabled) {
-        // console.log("Attempting to save note to Firebase:", newNote);
+        console.log("[addNoteHandler] Attempting to save note to Firebase:", newNote.id);
         try {
           await addNote(newNote, user.uid);
+          console.log("[addNoteHandler] Note successfully saved to Firebase:", newNote.id);
         } catch (error) {
-          // console.log("Error adding note to Firebase:", error);
+          console.error("[addNoteHandler] Error adding note to Firebase:", error);
+          console.error("[addNoteHandler] Error code:", error.code, "Message:", error.message);
 
           // If we get a permission error, disable Firestore for future operations
           if (
             error.code === "permission-denied" ||
             error.message.includes("Missing or insufficient permissions")
           ) {
-            // console.log(
-            //   "Permission denied - disabling Firestore for future operations"
-            // );
+            console.log(
+              "[addNoteHandler] Permission denied - disabling Firestore for future operations"
+            );
             setFirestoreEnabled(false);
             setFirebaseError(
               "Firestore permission denied. Using local storage only."
@@ -246,16 +283,17 @@ const DataProvider = ({ children }) => {
             // Just log the error and continue
           } else {
             // For other errors, show the error but don't disable Firestore
+            console.log("[addNoteHandler] Non-permission error, keeping Firestore enabled");
             setFirebaseError(`Error saving to cloud: ${error.message}`);
           }
         }
       } else {
-        // console.log("Skipping Firebase save - not enabled or no user");
+        console.log("[addNoteHandler] Skipping Firebase save - user:", !!user, "firestoreEnabled:", firestoreEnabled);
       }
 
       return newNote;
     } catch (error) {
-      // console.error("Error adding note:", error);
+      console.error("[addNoteHandler] Error adding note:", error);
       return null;
     }
   };
@@ -470,6 +508,34 @@ const DataProvider = ({ children }) => {
   };
 
   // Empty trash (delete all notes in trash)
+  const emptyTrashHandler = async () => {
+    // Update local state
+    setDeletedNotes([]);
+
+    // Save to localStorage
+    saveToLocalStorage(notes, archiveNotes, []);
+
+    // Update in Firebase if available
+    if (user && authEnabled && firestoreEnabled) {
+      try {
+        // Delete all deleted notes from Firebase
+        for (const note of deletedNotes) {
+          await deleteDeletedNote(note.id);
+        }
+      } catch (error) {
+        // console.error("Error emptying trash in Firebase:", error);
+        setFirebaseError(error.message);
+
+        // If we get a permissions error, disable Firestore
+        if (
+          error.code === "permission-denied" ||
+          error.code === "missing-or-insufficient-permissions"
+        ) {
+          setFirestoreEnabled(false);
+        }
+      }
+    }
+  };
 
   // Update notes order (for drag and drop)
   const updateNotesOrderHandler = async (reorderedNotes) => {
@@ -529,6 +595,7 @@ const DataProvider = ({ children }) => {
         deleteNoteHandler,
         deleteNoteForeverHandler: deleteDeletedNoteHandler,
         restoreNoteHandler: restoreDeletedNoteHandler,
+        emptyTrashHandler,
         updateNoteHandler,
         updateNoteText: updateNoteHandler,
         updateNoteColor: updateNoteHandler,
