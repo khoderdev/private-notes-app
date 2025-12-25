@@ -17,6 +17,7 @@ const DraggableNoteItem = ({ note, index, draggedNoteId }) => (
         sm={6}
         md={4}
         lg={3}
+        xl={2.4}
         ref={provided.innerRef}
         {...provided.draggableProps}
         {...provided.dragHandleProps}
@@ -26,9 +27,9 @@ const DraggableNoteItem = ({ note, index, draggedNoteId }) => (
             ? "scale(1.03)" 
             : "scale(1)",
           zIndex: snapshot.isDragging ? 100 : 1,
-          height: "auto",
+          height: "100%",
           display: "flex",
-          padding: "8px",
+          padding: 0,
           "&:hover": {
             transform: "translateY(-3px)",
           },

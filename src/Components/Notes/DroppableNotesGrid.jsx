@@ -1,14 +1,13 @@
-import React from "react";
 import { Droppable } from "@hello-pangea/dnd";
 import { Grid } from "@mui/material";
 import DraggableNoteItem from "./DraggableNoteItem";
 
 const DroppableNotesGrid = ({ notes, draggedNoteId }) => (
-  <Droppable droppableId="droppable" direction="horizontal">
+  <Droppable droppableId="droppable" direction="vertical">
     {(provided, snapshot) => (
       <Grid
         container
-        spacing={3}
+        spacing={{ xs: 1.5, sm: 2, md: 2.5, lg: 3 }}
         ref={provided.innerRef}
         {...provided.droppableProps}
         sx={{
@@ -18,6 +17,7 @@ const DroppableNotesGrid = ({ notes, draggedNoteId }) => (
             : "transparent",
           borderRadius: "8px",
           padding: snapshot.isDraggingOver ? 1 : 0,
+          width: "100%",
         }}
       >
         {notes.map((note, index) => (

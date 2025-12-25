@@ -5,15 +5,21 @@ import { styled } from "@mui/material/styles";
 const baseCardStyles = (theme) => ({
   borderRadius: theme.shape.borderRadius,
   transition: theme.transitions.create(["box-shadow", "transform"], {
-    duration: theme.transitions.duration.short, // 250ms
+    duration: theme.transitions.duration.short,
     easing: theme.transitions.easing.easeInOut,
   }),
   minHeight: "220px",
   width: "100%",
+  height: "100%",
   display: "flex",
   flexDirection: "column",
   position: "relative",
-  overflow: "visible",
+  overflow: "hidden",
+  padding: theme.spacing(2),
+  [theme.breakpoints.down("sm")]: {
+    minHeight: "200px",
+    padding: theme.spacing(1.5),
+  },
 });
 
 // Hover effect using theme shadows and optimized transform
@@ -43,7 +49,7 @@ export const NoteCard = styled(Card)(({ theme, isDragging }) => ({
 export const LockedNoteCard = styled(Card)(({ theme, isDragging }) => ({
   ...baseCardStyles(theme),
   border: `1px solid ${theme.palette.divider}`,
-  backgroundColor: theme.palette.action.disabledBackground,
+  backgroundColor: "red",
   backgroundImage: "linear-gradient(to bottom right, #f8f9fa, #f1f3f5)",
   boxShadow: isDragging ? draggingEffect(theme).boxShadow : theme.shadows[1],
   transform: isDragging ? draggingEffect(theme).transform : "none",
@@ -91,19 +97,28 @@ export const NoteContainer = styled("div")(({ theme }) => ({
 }));
 
 export const Container = styled(Box)(({ theme }) => ({
-  border: `1px solid ${theme.palette.divider}`,
-  margin: "auto",
+  margin: "0 auto",
   transition: theme.transitions.create("box-shadow", {
-    duration: theme.transitions.duration.short, // 250ms
+    duration: theme.transitions.duration.short,
   }),
   width: "100%",
-  maxWidth: "70%",
-  // padding: theme.spacing(2),
+  maxWidth: "1400px",
+  paddingX: theme.spacing(2),
+  [theme.breakpoints.up("lg")]: {
+    maxWidth: "1200px",
+    paddingX: theme.spacing(3),
+  },
+  [theme.breakpoints.down("lg")]: {
+    maxWidth: "100%",
+    paddingX: theme.spacing(2),
+  },
   [theme.breakpoints.down("md")]: {
-    maxWidth: "90%",
+    maxWidth: "100%",
+    paddingX: theme.spacing(1.5),
   },
   [theme.breakpoints.down("sm")]: {
     maxWidth: "100%",
+    paddingX: theme.spacing(1),
   },
 }));
 
@@ -127,9 +142,9 @@ export const LoadingContainer = styled(Box)(({ theme }) => ({
   justifyContent: "center",
   alignItems: "center",
   width: "100%",
-  height: "100vh",
+  minHeight: "60vh",
   flexDirection: "column",
-  gap: theme.spacing(2), // 16px
+  gap: theme.spacing(2),
 }));
 
 export const StatusIndicator = styled(Box)(({ theme }) => ({
@@ -150,7 +165,14 @@ export const MainContent = styled(Box)(({ theme }) => ({
   display: "flex",
   flexDirection: "column",
   width: "100%",
+  flex: 1,
   padding: theme.spacing(3),
+  [theme.breakpoints.down("md")]: {
+    padding: theme.spacing(2),
+  },
+  [theme.breakpoints.down("sm")]: {
+    padding: theme.spacing(1.5),
+  },
 }));
 
 export const NotesContainer = styled(Container)(({ theme }) => ({

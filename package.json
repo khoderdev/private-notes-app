@@ -23,8 +23,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "task-kill": "taskkill /F /IM node.exe"
   },
   "homepage": "https://private-notes-2025.web.app",
   "eslintConfig": {

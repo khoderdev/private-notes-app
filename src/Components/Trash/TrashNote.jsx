@@ -41,18 +41,18 @@ const TrashNote = ({ trashNote }) => {
   };
 
   const { 
-    restoreDeletedNoteHandler, 
-    deleteDeletedNoteHandler, 
+    restoreNoteHandler, 
+    deleteNoteForeverHandler, 
     deletedNotes 
   } = useContext(DataContext);
 
   const deleteNote = (note) => {
-    deleteDeletedNoteHandler(note);
+    deleteNoteForeverHandler(note);
     handleCloseModal();
   };
 
   const restoreNote = (note) => {
-    restoreDeletedNoteHandler(note);
+    restoreNoteHandler(note);
   };
 
   return (

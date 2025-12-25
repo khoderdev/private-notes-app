@@ -114,7 +114,7 @@ const AlertManager = ({
             saved locally.
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            {firebaseError?.includes("permission denied")
+            {firebaseError?.toLowerCase().includes("permission") || firebaseError?.toLowerCase().includes("denied")
               ? "Your notes are safely stored on your device. Cloud sync is currently unavailable."
               : `Error: ${firebaseError}`}
           </Typography>

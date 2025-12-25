@@ -1,29 +1,6 @@
 import { initializeApp } from "firebase/app";
-import {
-  getFirestore,
-  collection,
-  getDocs,
-  doc,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-  serverTimestamp,
-  setDoc,
-  limit,
-  writeBatch,
-  connectFirestoreEmulator,
-} from "firebase/firestore";
-import {
-  getAuth,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  onAuthStateChanged,
-  signInWithPopup,
-  GoogleAuthProvider,
-  connectAuthEmulator,
-} from "firebase/auth";
+import { getFirestore, collection, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy, serverTimestamp, setDoc, limit, writeBatch, connectFirestoreEmulator, } from "firebase/firestore";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, connectAuthEmulator, } from "firebase/auth";
 
 // Firebase configuration
 const firebaseConfig = {
@@ -200,85 +177,41 @@ initializeFirebase()
 
 // Check if we have access to Firestore
 export const checkFirestoreAccess = async () => {
+  console.log("[checkFirestoreAccess] Starting access check");
   try {
     // If Firebase hasn't been initialized yet, try to initialize it
     if (!initializationAttempted) {
+      console.log("[checkFirestoreAccess] Firebase not initialized, attempting initialization");
       const result = await initializeFirebase();
       if (!result.success) {
-        // console.log("Firestore access check failed: Firebase initialization failed");
+        console.log("[checkFirestoreAccess] Firebase initialization failed");
         return false;
       }
     }
 
     if (!db) {
-      // console.log("Firestore not initialized");
+      console.log("[checkFirestoreAccess] Firestore database not initialized");
       return false;
     }
 
     const currentUser = auth.currentUser;
     if (!currentUser) {
-      // console.log("Firestore access check failed: No user signed in");
+      console.log("[checkFirestoreAccess] No user signed in");
       return false;
     }
 
     const userId = currentUser.uid;
-    // console.log(`Checking Firestore access for user ${userId}`);
+    console.log(`[checkFirestoreAccess] User authenticated with UID: ${userId}`);
 
     // Reset firestoreEnabled to true before checking
     firestoreEnabled = true;
 
-    // Try to access the notes collection
-    try {
-      const notesRef = collection(db, "notes");
-      const q = query(notesRef, where("userId", "==", userId), limit(1));
-      await getDocs(q);
-
-      // console.log("Firestore access check passed");
-      return true;
-    } catch (permissionError) {
-      // console.log("Permission error when accessing notes:", permissionError);
-
-      if (
-        permissionError.code === "permission-denied" ||
-        permissionError.code === "missing-or-insufficient-permissions"
-      ) {
-        // console.log("Permission denied for regular access, trying admin collection");
-
-        // Try to access an admin-only collection as a fallback
-        try {
-          const adminRef = collection(db, "system");
-          const adminQuery = query(adminRef, limit(1));
-          await getDocs(adminQuery);
-
-          // console.log("Admin Firestore access check passed");
-          return true;
-        } catch (adminError) {
-          // console.error("Admin Firestore access check failed:", adminError);
-          // Only disable Firestore for permission errors, not for network errors
-          if (
-            adminError.code === "permission-denied" ||
-            adminError.code === "missing-or-insufficient-permissions"
-          ) {
-            firestoreEnabled = false;
-          }
-          return false;
-        }
-      } else {
-        throw permissionError; // Re-throw non-permission errors
-      }
-    }
+    // If user is authenticated, assume Firestore access is available
+    // The actual permission check will happen when we try to read/write data
+    console.log("[checkFirestoreAccess] User is authenticated, Firestore access available");
+    return true;
   } catch (error) {
-    // console.error("Firestore access check failed:", error);
-    // console.log("Error details:", error.code, error.message);
-
-    // Only disable Firestore for permission errors, not for network errors
-    if (
-      error.code === "permission-denied" ||
-      error.code === "missing-or-insufficient-permissions"
-    ) {
-      firestoreEnabled = false;
-    }
-
+    console.error("[checkFirestoreAccess] Error checking access:", error);
     return false;
   }
 };
@@ -438,16 +371,19 @@ export const getTimestamp = () => {
 
 // Firestore data operations
 export const fetchNotes = async (userId) => {
+  console.log("[fetchNotes] Starting fetch for user:", userId);
+  console.log("[fetchNotes] db initialized:", !!db, "firestoreEnabled:", firestoreEnabled);
+  
   if (!db || !firestoreEnabled) {
-    // console.log("Fetch notes: Firestore not enabled or initialized");
+    console.log("[fetchNotes] Firestore not enabled or initialized, returning empty array");
     return [];
   }
 
   try {
-    // console.log(`Fetching notes for user ${userId}`);
+    console.log(`[fetchNotes] Fetching notes for user ${userId}`);
 
     if (!userId) {
-      // console.error("fetchNotes called with no userId");
+      console.error("[fetchNotes] Called with no userId");
       return [];
     }
 
@@ -458,15 +394,15 @@ export const fetchNotes = async (userId) => {
       orderBy("timestamp", "desc")
     );
 
-    // console.log("Executing Firestore query:", q);
+    console.log("[fetchNotes] Executing Firestore query for user:", userId);
     const querySnapshot = await getDocs(q);
     const notes = [];
 
-    // console.log(`Query returned ${querySnapshot.size} documents`);
+    console.log(`[fetchNotes] Query returned ${querySnapshot.size} documents`);
 
     querySnapshot.forEach((doc) => {
       const data = doc.data();
-      // console.log(`Processing note document: ${doc.id}`, data);
+      console.log(`[fetchNotes] Processing note document: ${doc.id}`, data);
       notes.push({
         id: doc.id,
         ...data,
@@ -476,24 +412,25 @@ export const fetchNotes = async (userId) => {
       });
     });
 
-    // console.log(`Fetched ${notes.length} notes:`, notes);
+    console.log(`[fetchNotes] Successfully fetched ${notes.length} notes`);
     return notes;
   } catch (error) {
-    // console.error("Error in fetchNotes:", error);
-    // console.error("Error details:", error.code, error.message);
+    console.error("[fetchNotes] Error fetching notes:", error);
+    console.error("[fetchNotes] Error details - Code:", error.code, "Message:", error.message);
     handleFirestoreError(error, "fetchNotes");
     return [];
   }
 };
 
 export const fetchArchivedNotes = async (userId) => {
+  console.log("[fetchArchivedNotes] Starting fetch for user:", userId);
   if (!db || !firestoreEnabled) {
-    // console.log("Fetch archived notes: Firestore not enabled or initialized");
+    console.log("[fetchArchivedNotes] Firestore not enabled or initialized");
     return [];
   }
 
   try {
-    // console.log(`Fetching archived notes for user ${userId}`);
+    console.log(`[fetchArchivedNotes] Fetching archived notes for user ${userId}`);
     const archivedNotesRef = collection(db, "archivedNotes");
     const q = query(
       archivedNotesRef,
@@ -501,9 +438,11 @@ export const fetchArchivedNotes = async (userId) => {
       orderBy("timestamp", "desc")
     );
 
+    console.log("[fetchArchivedNotes] Executing Firestore query");
     const querySnapshot = await getDocs(q);
     const archivedNotes = [];
 
+    console.log(`[fetchArchivedNotes] Query returned ${querySnapshot.size} documents`);
     querySnapshot.forEach((doc) => {
       archivedNotes.push({
         id: doc.id,
@@ -514,22 +453,24 @@ export const fetchArchivedNotes = async (userId) => {
       });
     });
 
-    // console.log(`Fetched ${archivedNotes.length} archived notes`);
+    console.log(`[fetchArchivedNotes] Successfully fetched ${archivedNotes.length} archived notes`);
     return archivedNotes;
   } catch (error) {
+    console.error("[fetchArchivedNotes] Error:", error);
     handleFirestoreError(error, "fetchArchivedNotes");
     return [];
   }
 };
 
 export const fetchDeletedNotes = async (userId) => {
+  console.log("[fetchDeletedNotes] Starting fetch for user:", userId);
   if (!db || !firestoreEnabled) {
-    // console.log("Fetch deleted notes: Firestore not enabled or initialized");
+    console.log("[fetchDeletedNotes] Firestore not enabled or initialized");
     return [];
   }
 
   try {
-    console.log(`Fetching deleted notes for user ${userId}`);
+    console.log(`[fetchDeletedNotes] Fetching deleted notes for user ${userId}`);
     const deletedNotesRef = collection(db, "deletedNotes");
     const q = query(
       deletedNotesRef,
@@ -537,9 +478,11 @@ export const fetchDeletedNotes = async (userId) => {
       orderBy("timestamp", "desc")
     );
 
+    console.log("[fetchDeletedNotes] Executing Firestore query");
     const querySnapshot = await getDocs(q);
     const deletedNotes = [];
 
+    console.log(`[fetchDeletedNotes] Query returned ${querySnapshot.size} documents`);
     querySnapshot.forEach((doc) => {
       deletedNotes.push({
         id: doc.id,
@@ -550,22 +493,26 @@ export const fetchDeletedNotes = async (userId) => {
       });
     });
 
-    // console.log(`Fetched ${deletedNotes.length} deleted notes`);
+    console.log(`[fetchDeletedNotes] Successfully fetched ${deletedNotes.length} deleted notes`);
     return deletedNotes;
   } catch (error) {
+    console.error("[fetchDeletedNotes] Error:", error);
     handleFirestoreError(error, "fetchDeletedNotes");
     return [];
   }
 };
 
 export const addNote = async (note, userId) => {
+  console.log("[addNote] Starting add note for user:", userId, "Note ID:", note.id);
+  console.log("[addNote] db initialized:", !!db, "firestoreEnabled:", firestoreEnabled);
+  
   if (!db || !firestoreEnabled) {
-    // console.log("Add note: Firestore not enabled or initialized");
+    console.log("[addNote] Firestore not enabled or initialized");
     throw new Error("Firestore not available");
   }
 
   try {
-    // console.log(`Adding note for user ${userId}:`, note.id);
+    console.log(`[addNote] Adding note for user ${userId}:`, note.id);
 
     // Ensure the note has the required fields and consistent naming
     const noteWithMetadata = {
@@ -577,18 +524,18 @@ export const addNote = async (note, userId) => {
       text: note.text || "",
     };
 
-    // Log the note structure being saved
-    // console.log("Saving note to Firestore:", noteWithMetadata);
+    console.log("[addNote] Note structure being saved:", noteWithMetadata);
 
     // Add the note to Firestore
     const notesRef = collection(db, "notes");
+    console.log("[addNote] Writing to Firestore collection 'notes' with doc ID:", note.id);
     await setDoc(doc(notesRef, note.id), noteWithMetadata);
 
-    // console.log(`Note added successfully: ${note.id}`);
+    console.log(`[addNote] Note added successfully: ${note.id}`);
     return note.id;
   } catch (error) {
-    // console.error("Error adding note to Firestore:", error);
-    // console.log("Error details:", error.code, error.message);
+    console.error("[addNote] Error adding note to Firestore:", error);
+    console.error("[addNote] Error details - Code:", error.code, "Message:", error.message);
     handleFirestoreError(error, "addNote");
     throw error;
   }

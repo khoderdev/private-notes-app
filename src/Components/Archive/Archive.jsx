@@ -24,17 +24,17 @@ const Archive = ({ archiveNote }) => {
   const [showActions, setShowActions] = useState(false);
 
   const { 
-    restoreArchiveNoteHandler, 
-    deleteArchiveNoteHandler,
+    unarchiveNoteHandler, 
+    deleteNoteHandler,
     archiveNotes 
   } = useContext(DataContext);
 
   const unarchiveNote = (note) => {
-    restoreArchiveNoteHandler(note);
+    unarchiveNoteHandler(note);
   };
 
   const deleteNote = (note) => {
-    deleteArchiveNoteHandler(note);
+    deleteNoteHandler(note);
   };
 
   return (
