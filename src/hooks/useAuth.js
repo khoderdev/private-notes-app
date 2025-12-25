@@ -287,6 +287,9 @@ export const useAuth = (setFirebaseError, setFirestoreEnabled) => {
       authInitInProgress = true;
       
       try {
+        // Clear any stored local user ID so users see the login page
+        localStorage.removeItem("localUserId");
+        
         if (isQuotaExceeded() && !checkQuotaResetTime()) {
           console.log("Authentication quota exceeded, using local user");
           createLocalUser();
@@ -294,21 +297,6 @@ export const useAuth = (setFirebaseError, setFirestoreEnabled) => {
           return;
         }
         
-        const storedLocalUserId = localStorage.getItem("localUserId");
-
-        if (storedLocalUserId) {
-          console.log("Found stored local user:", storedLocalUserId);
-          setUser({
-            uid: storedLocalUserId,
-            isAnonymous: true,
-            providerId: "local",
-            isLocalUser: true,
-          });
-          setAuthEnabled(false);
-          setLoading(false);
-          return;
-        }
-
         unsubscribe = onAuthStateChange((firebaseUser) => {
           if (firebaseUser) {
             console.log(
@@ -324,7 +312,8 @@ export const useAuth = (setFirebaseError, setFirestoreEnabled) => {
               }
             });
           } else {
-            console.log("Auth state changed: No user is signed in");
+            console.log("Auth state changed: No user is signed in, showing auth form");
+            setUser(null);
             setLoading(false);
           }
         });

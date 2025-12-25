@@ -21,9 +21,10 @@ service cloud.firestore {
       let noteData = request.resource.data;
       
       // Make validation more flexible - only require userId and timestamp
+      // Timestamp can be either a string (ISO format) or a server timestamp
       return noteData.size() >= 2
         && noteData.userId is string
-        && noteData.timestamp is string;
+        && (noteData.timestamp is string || noteData.timestamp is timestamp);
     }
     
     // Grant admin full access to all collections
